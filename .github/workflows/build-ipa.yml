@@ -5,6 +5,9 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-latest
@@ -18,7 +21,15 @@ jobs:
         run: |
           sw_vers
           xcodebuild -version
-          echo "iPhoneOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
+          SDK=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "iPhoneOS SDK: $SDK"
+          {
+            echo "### Toolchain"
+            echo ""
+            echo "- macOS: $(sw_vers -productVersion)"
+            echo "- Xcode: $(xcodebuild -version | head -1)"
+            echo "- iPhoneOS SDK: $SDK"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -43,13 +54,39 @@ jobs:
             DEVELOPMENT_TEAM="" \
             2>&1 | tee build.log
 
-      - name: Print build errors
+      - name: Publish build errors
         if: failure()
         run: |
           echo "===== error lines ====="
           grep -n "error:" build.log | head -80 || true
           echo "===== tail ====="
           tail -n 80 build.log || true
+
+          {
+            echo ""
+            echo "## Build errors"
+            echo ""
+            echo '```'
+            grep -n "error:" build.log | head -60 || echo "(no error: lines)"
+            echo '```'
+            echo ""
+            echo "## Log tail"
+            echo '```'
+            tail -n 50 build.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Push failure log to ci-logs branch
+        if: failure()
+        run: |
+          mkdir -p ci-artifacts
+          cp build.log ci-artifacts/build.log 2>/dev/null || exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B ci-logs
+          git add ci-artifacts/build.log
+          git commit -m "ci: build log $(date -u +%FT%TZ)" || exit 0
+          git push --force origin ci-logs
 
       - name: Package IPA
         if: success()
