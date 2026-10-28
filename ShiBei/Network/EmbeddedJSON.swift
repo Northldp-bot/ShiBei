@@ -160,24 +160,29 @@ extension Dictionary where Key == String, Value == Any {
 
     /// 逐级取值：dig("note", "video", "media")
     func dig(_ keys: String...) -> Any? {
+        digPath(keys)
+    }
+
+    func digDict(_ keys: String...) -> [String: Any]? {
+        digPath(keys) as? [String: Any]
+    }
+
+    func digArray(_ keys: String...) -> [Any]? {
+        digPath(keys) as? [Any]
+    }
+
+    func digString(_ keys: String...) -> String? {
+        digPath(keys) as? String
+    }
+
+    /// 可变参数不能直接展开数组，统一走这个接收 [String] 的实现
+    private func digPath(_ keys: [String]) -> Any? {
         var current: Any? = self
         for key in keys {
             guard let dictionary = current as? [String: Any] else { return nil }
             current = dictionary[key]
         }
         return current
-    }
-
-    func digDict(_ keys: String...) -> [String: Any]? {
-        dig(keys) as? [String: Any]
-    }
-
-    func digArray(_ keys: String...) -> [Any]? {
-        dig(keys) as? [Any]
-    }
-
-    func digString(_ keys: String...) -> String? {
-        dig(keys) as? String
     }
 }
 
