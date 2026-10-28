@@ -3,7 +3,7 @@
 Picseed 同功能的 iOS 内容收藏 App（**已去除笔记模块**）：把小红书、抖音、B 站、知乎、微博、小黑盒的图文与视频，连同**完整正文**收进本地，支持**实况图**、**本地播放器**和**自定义离线缓存**。
 
 - 纯 SwiftUI + SwiftData，零第三方依赖
-- 部署目标 iOS 18.0，iPhone 竖屏
+- 部署目标 iOS 17.0，iPhone 竖屏
 - 离屏 `WKWebView` 处理纯前端渲染的平台（抖音）
 - 不登录、不上传，数据只存在设备本地
 
@@ -92,7 +92,7 @@ open ShiBei.xcodeproj
 
 Xcode 里选你的开发者账号即可真机运行。
 
-> 部署目标固定 18.0：这样无论 CI 上是 Xcode 16 还是 26 都能编译。若用 Xcode 26 / iOS 26 SDK 编译，系统控件会自动获得 Liquid Glass 外观。
+> 部署目标固定 17.0：Xcode 15/16/26 的 runner 都能编译，避免因 SDK 版本过旧而报「deployment target 不受支持」。用 Xcode 26 / iOS 26 SDK 编译时，系统控件会自动获得 Liquid Glass 外观。
 
 ---
 

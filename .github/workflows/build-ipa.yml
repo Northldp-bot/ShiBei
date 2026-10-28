@@ -16,17 +16,21 @@ jobs:
 
       - name: Show toolchain
         run: |
+          sw_vers
           xcodebuild -version
-          xcrun --sdk iphoneos --show-sdk-version
+          echo "iPhoneOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
 
       - name: Install XcodeGen
         run: brew install xcodegen
 
       - name: Generate Xcode project
-        run: xcodegen generate
+        run: |
+          xcodegen generate
+          xcodebuild -project ShiBei.xcodeproj -list
 
       - name: Archive (unsigned)
         run: |
+          set -o pipefail
           xcodebuild archive \
             -project ShiBei.xcodeproj \
             -scheme ShiBei \
@@ -37,9 +41,18 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             DEVELOPMENT_TEAM="" \
-            -quiet
+            2>&1 | tee build.log
+
+      - name: Print build errors
+        if: failure()
+        run: |
+          echo "===== error lines ====="
+          grep -n "error:" build.log | head -80 || true
+          echo "===== tail ====="
+          tail -n 80 build.log || true
 
       - name: Package IPA
+        if: success()
         run: |
           mkdir -p build/Payload
           cp -R build/ShiBei.xcarchive/Products/Applications/ShiBei.app build/Payload/
@@ -50,6 +63,7 @@ jobs:
           cat ShiBei.ipa.sha256
 
       - name: Upload IPA
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ShiBei-ipa

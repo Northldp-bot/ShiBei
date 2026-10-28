@@ -2,7 +2,7 @@ name: ShiBei
 options:
   bundleIdPrefix: com.shibei
   deploymentTarget:
-    iOS: "18.0"
+    iOS: "17.0"
   createIntermediateGroups: true
   groupSortPosition: top
   generateEmptyDirectories: true
@@ -19,7 +19,7 @@ targets:
   ShiBei:
     type: application
     platform: iOS
-    deploymentTarget: "18.0"
+    deploymentTarget: "17.0"
     sources:
       - path: ShiBei
         excludes:

@@ -32,15 +32,17 @@ struct RootView: View {
         @Bindable var state = appState
 
         TabView(selection: $state.selectedTab) {
-            Tab("收藏", systemImage: "square.grid.2x2", value: .library) {
-                LibraryView()
-            }
-            Tab("缓存", systemImage: "arrow.down.circle", value: .cache) {
-                CacheView()
-            }
-            Tab("设置", systemImage: "gearshape", value: .settings) {
-                SettingsView()
-            }
+            LibraryView()
+                .tabItem { Label("收藏", systemImage: "square.grid.2x2") }
+                .tag(AppTab.library)
+
+            CacheView()
+                .tabItem { Label("缓存", systemImage: "arrow.down.circle") }
+                .tag(AppTab.cache)
+
+            SettingsView()
+                .tabItem { Label("设置", systemImage: "gearshape") }
+                .tag(AppTab.settings)
         }
         .sheet(isPresented: $state.presentCapture) {
             CaptureView(prefill: state.pendingLink)
