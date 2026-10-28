@@ -185,11 +185,15 @@ struct DouyinResolver: ContentResolver {
     private func findItem(in router: [String: Any]) -> [String: Any]? {
         if let loader = router.dict("loaderData") {
             for value in loader.values {
-                if let list = value.digDict("videoInfoRes")?["item_list"] as? [[String: Any]],
+                guard let pageData = value as? [String: Any] else { continue }
+
+                if let info = pageData.digDict("videoInfoRes"),
+                   let list = info["item_list"] as? [[String: Any]],
                    let first = list.first {
                     return first
                 }
-                if let list = value.digDict("noteInfoRes")?["item_list"] as? [[String: Any]],
+                if let info = pageData.digDict("noteInfoRes"),
+                   let list = info["item_list"] as? [[String: Any]],
                    let first = list.first {
                     return first
                 }
