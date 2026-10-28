@@ -1,0 +1,17 @@
+# Xcode
+build/
+DerivedData/
+*.xcarchive
+*.ipa
+xcuserdata/
+ShiBei.xcodeproj/
+
+# XcodeGen
+ShiBei.xcodeproj/project.xcworkspace/xcuserdata/
+ShiBei.xcodeproj/xcuserdata/
+
+# macOS
+.DS_Store
+
+# Local
+.env
