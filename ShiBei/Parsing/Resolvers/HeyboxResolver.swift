@@ -169,7 +169,7 @@ struct HeyboxResolver: ContentResolver {
         media = collected.images.map { ParsedMedia(kind: .image, imageURL: $0, posterURL: $0) }
         media += collected.videos.map { ParsedMedia(kind: .video, videoURL: $0) }
 
-        let title = link.string("title")
+        let title = link.string("title") ?? ""
         let rawText = link.string("text")
             ?? link.string("content")
             ?? link.string("description")
