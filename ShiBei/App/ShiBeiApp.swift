@@ -4,6 +4,7 @@ import SwiftData
 @main
 struct ShiBeiApp: App {
     @State private var appState = AppState()
+    @AppStorage("themeMode") private var themeMode = "system"
 
     var body: some Scene {
         WindowGroup {
@@ -11,6 +12,7 @@ struct ShiBeiApp: App {
                 .environment(appState)
                 .environment(CacheManager.shared)
                 .tint(Theme.ink)
+                .preferredColorScheme(colorScheme)
                 .modelContainer(ShiBeiContainer.shared.container)
                 .onOpenURL { url in
                     guard url.scheme == "shibei" else { return }
@@ -21,6 +23,14 @@ struct ShiBeiApp: App {
                         appState.presentCapture = true
                     }
                 }
+        }
+    }
+
+    private var colorScheme: ColorScheme? {
+        switch themeMode {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
         }
     }
 }

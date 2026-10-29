@@ -11,7 +11,13 @@ struct ZhihuResolver: ContentResolver {
 
     func resolve(_ url: URL, http: HTTPClient) async throws -> ParsedContent {
         let headers = ["User-Agent": UserAgent.desktop]
-        let (html, finalURL) = try await http.decoded(url, headers: headers, referer: "https://www.zhihu.com/")
+        let html: String
+        let finalURL: URL
+        do {
+            (html, finalURL) = try await http.decoded(url, headers: headers, referer: "https://www.zhihu.com/")
+        } catch {
+            throw ParseError.blocked("知乎拒绝了本次请求（网络风控），请切换 Wi-Fi/蜂窝网络后重试")
+        }
         var notes = ["final: \(finalURL.absoluteString)"]
 
         guard let script = EmbeddedJSON.object(inScriptID: "js-initialData", html: html)

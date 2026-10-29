@@ -23,6 +23,10 @@ enum LibraryService {
             folderName: id.uuidString,
             coverRemote: content.coverURL?.absoluteString,
             tags: tags,
+            topics: content.topics,
+            lastEditedAt: nil,
+            lastViewedAt: nil,
+            viewCount: 0,
             parseNotes: content.diagnostics.joined(separator: "\n")
         )
         item.media = content.media.enumerated().map { index, media in
@@ -82,6 +86,26 @@ enum LibraryService {
 
     static func updateTags(_ item: Item, tags: [String]) {
         item.tags = tags
+        item.lastEditedAt = .now
+        try? context.save()
+    }
+
+    static func updateTopics(_ item: Item, topics: [String]) {
+        item.topics = topics
+        item.lastEditedAt = .now
+        try? context.save()
+    }
+
+    static func updateText(_ item: Item, text: String) {
+        item.text = text
+        item.lastEditedAt = .now
+        try? context.save()
+    }
+
+    /// 打开详情时记一次浏览
+    static func recordView(_ item: Item) {
+        item.lastViewedAt = .now
+        item.viewCount += 1
         try? context.save()
     }
 

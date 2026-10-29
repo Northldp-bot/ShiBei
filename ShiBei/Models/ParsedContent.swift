@@ -11,6 +11,8 @@ struct ParsedContent: Sendable {
     var publishedAt: Date?
     var media: [ParsedMedia]
     var diagnostics: [String]
+    /// 从正文 `#话题#` 提取，可手动增改
+    var topics: [String]
 
     init(
         platform: Platform,
@@ -21,7 +23,8 @@ struct ParsedContent: Sendable {
         authorAvatarURL: URL? = nil,
         publishedAt: Date? = nil,
         media: [ParsedMedia] = [],
-        diagnostics: [String] = []
+        diagnostics: [String] = [],
+        topics: [String] = []
     ) {
         self.platform = platform
         self.sourceURL = sourceURL
@@ -32,6 +35,7 @@ struct ParsedContent: Sendable {
         self.publishedAt = publishedAt
         self.media = media
         self.diagnostics = diagnostics
+        self.topics = topics
     }
 
     var images: [ParsedMedia] { media.filter { $0.kind == .image } }

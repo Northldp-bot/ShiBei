@@ -1,130 +1,284 @@
 import SwiftUI
 import SwiftData
 
-@MainActor
 struct SettingsView: View {
-    @Environment(AppState.self) private var appState
-    @Environment(CacheManager.self) private var cache
-
-    @AppStorage("autoCache") private var autoCache = false
-    @AppStorage("downloadQuality") private var downloadQuality = "1080P"
-    @AppStorage("saveLiveAsLivePhoto") private var saveLiveAsLivePhoto = true
-    @AppStorage("autoTagByPlatform") private var autoTagByPlatform = true
-    @AppStorage("maxConcurrentDownloads") private var maxConcurrent = 3
-
-    @State private var showShortcutsHelp = false
-    @State private var showClearConfirm = false
-
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Toggle("自动缓存新收藏", isOn: $autoCache)
-                    Picker("默认清晰度", selection: $downloadQuality) {
-                        Text("最高").tag("最高")
-                        Text("1080P").tag("1080P")
-                        Text("720P").tag("720P")
+            List {
+                Section("内容") {
+                    NavigationLink {
+                        GeneralSettingsView()
+                    } label: {
+                        SettingsMenuRow(icon: "gearshape.fill", color: Color(rgb: 0x8E8E93), title: "通用", subtitle: "外观、字体、默认排序")
                     }
-                    Toggle("按平台自动打标签", isOn: $autoTagByPlatform)
-                    NavigationLink("标签管理") {
+                    NavigationLink {
+                        StatisticsView()
+                    } label: {
+                        SettingsMenuRow(icon: "chart.bar.fill", color: Color(rgb: 0x5B8DEF), title: "统计", subtitle: "收藏、文字、图片、话题")
+                    }
+                    NavigationLink {
                         TagManagerView()
-                    }
-                } header: {
-                    Text("收藏")
-                } footer: {
-                    Text("自动缓存会在解析成功后立即下载全部媒体，仅建议在 Wi-Fi 下开启。")
-                }
-
-                Section {
-                    Toggle("实况图在相册中保留为实况", isOn: $saveLiveAsLivePhoto)
-                    LabeledContent("B 站音视频合并", value: "自动")
-                    Stepper("同时下载 \(maxConcurrent) 项", value: $maxConcurrent, in: 1...6)
-                    NavigationLink("登录态 Cookie") {
-                        AdvancedSettingsView()
-                    }
-                } header: {
-                    Text("下载")
-                } footer: {
-                    Text("B 站高清视频的音轨与画面是分离的，保存时会自动合并为一个 MP4。")
-                }
-
-                Section {
-                    Button {
-                        appState.selectedTab = .cache
                     } label: {
-                        HStack {
-                            Text("缓存占用").foregroundStyle(Theme.ink)
-                            Spacer()
-                            Text(FileSize.string(cache.totalBytes))
-                                .foregroundStyle(Theme.inkSecondary)
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Theme.inkTertiary)
-                        }
+                        SettingsMenuRow(icon: "tag.fill", color: Color(rgb: 0xF6B26B), title: "标签管理", subtitle: "标签、话题、自动标记")
                     }
-                    Button(role: .destructive) {
-                        showClearConfirm = true
+                }
+
+                Section("存储与网络") {
+                    NavigationLink {
+                        CacheView()
                     } label: {
-                        Text("清理全部缓存")
+                        SettingsMenuRow(icon: "cylinder.fill", color: Color(rgb: 0xC77700), title: "缓存", subtitle: "占用、自动缓存、上限")
                     }
-                } header: {
-                    Text("存储")
-                }
-
-                Section {
-                    Button {
-                        showShortcutsHelp = true
+                    NavigationLink {
+                        DownloadSettingsView()
                     } label: {
-                        HStack {
-                            Text("添加到快捷指令").foregroundStyle(Theme.ink)
-                            Spacer()
-                            Text("一键收藏").foregroundStyle(Theme.inkSecondary)
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Theme.inkTertiary)
-                        }
+                        SettingsMenuRow(icon: "arrow.down.circle.fill", color: Color(rgb: 0x2BA24C), title: "下载", subtitle: "清晰度、并发、仅 Wi-Fi")
                     }
-                    NavigationLink("关于拾贝") { AboutView() }
-                    LabeledContent("版本", value: "1.0.0 (1)")
-                } header: {
-                    Text("关于")
                 }
 
-                Section {
-                    Text("拾贝只保存你有权访问的公开内容，用于个人离线阅读。请勿用于二次分发或商业用途。")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.inkTertiary)
-                }
-
-                Section {
-                    Text("把喜欢的内容留在本地")
-                        .font(.system(size: 11))
-                        .foregroundStyle(Theme.inkTertiary.opacity(0.7))
-                        .frame(maxWidth: .infinity)
-                        .listRowBackground(Color.clear)
+                Section("其他") {
+                    NavigationLink {
+                        AboutView()
+                    } label: {
+                        SettingsMenuRow(icon: "info.circle.fill", color: Color(rgb: 0x0A7CFF), title: "关于", subtitle: "版本 1.0.0 · 使用说明 · 反馈")
+                    }
                 }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.canvas)
-            .navigationTitle("设置")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear { cache.refreshTotals() }
-            .sheet(isPresented: $showShortcutsHelp) {
-                ShortcutsHelpView()
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: 56)
             }
-            .confirmationDialog("清理全部缓存？", isPresented: $showClearConfirm, titleVisibility: .visible) {
-                Button("清理全部", role: .destructive) {
-                    let descriptor = FetchDescriptor<Item>(predicate: #Predicate<Item> { $0.isCached })
-                    let cached = (try? ShiBeiContainer.shared.context.fetch(descriptor)) ?? []
-                    for item in cached { cache.deleteCache(item) }
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("拾贝")
+                        .font(Theme.wordmark())
+                        .tracking(4)
                 }
-                Button("取消", role: .cancel) {}
-            } message: {
-                Text("只删除本地文件，收藏记录保留。")
             }
         }
     }
 }
+
+private struct SettingsMenuRow: View {
+    let icon: String
+    let color: Color
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 32, height: 32)
+                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(color))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(Theme.ink)
+                Text(subtitle)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+// MARK: - 通用
+
+struct GeneralSettingsView: View {
+    @Environment(AppState.self) private var appState
+    @AppStorage("themeMode") private var themeMode = "system"
+    @AppStorage("defaultSort") private var defaultSort = SortOrder.saved.rawValue
+    @AppStorage("defaultDimension") private var defaultDimension = FilterDimension.all.rawValue
+
+    var body: some View {
+        Form {
+            Section("外观") {
+                Picker("主题", selection: $themeMode) {
+                    Text("跟随系统").tag("system")
+                    Text("浅色").tag("light")
+                    Text("深色").tag("dark")
+                }
+                .pickerStyle(.segmented)
+            }
+
+            Section {
+                Picker("默认分类维度", selection: $defaultDimension) {
+                    ForEach(FilterDimension.allCases) { dimension in
+                        Text(dimension.title).tag(dimension.rawValue)
+                    }
+                }
+                Picker("默认排序", selection: $defaultSort) {
+                    ForEach(SortOrder.allCases) { order in
+                        Text(order.title).tag(order.rawValue)
+                    }
+                }
+            } header: {
+                Text("列表")
+            } footer: {
+                Text("修改后立即生效，下次启动也会沿用。")
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.canvas)
+        .navigationTitle("通用")
+        .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: defaultDimension) { _, raw in
+            if let dimension = FilterDimension(rawValue: raw) {
+                appState.filter.dimension = dimension
+            }
+        }
+        .onChange(of: defaultSort) { _, raw in
+            if let order = SortOrder(rawValue: raw) {
+                appState.sortOrder = order
+            }
+        }
+    }
+}
+
+// MARK: - 下载
+
+struct DownloadSettingsView: View {
+    @AppStorage("downloadQuality") private var downloadQuality = "1080P"
+    @AppStorage("maxConcurrentDownloads") private var maxConcurrent = 3
+    @AppStorage("saveLiveAsLivePhoto") private var saveLiveAsLivePhoto = true
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("默认清晰度", selection: $downloadQuality) {
+                    Text("最高").tag("最高")
+                    Text("1080P").tag("1080P")
+                    Text("720P").tag("720P")
+                }
+                Stepper("同时下载 \(maxConcurrent) 项", value: $maxConcurrent, in: 1...6)
+                LabeledContent("B 站音视频合并", value: "自动")
+            } header: {
+                Text("视频")
+            } footer: {
+                Text("B 站高清视频的音轨与画面是分离的，保存时会自动合并为一个 MP4。")
+            }
+
+            Section("媒体与登录") {
+                Toggle("实况图保存为实况", isOn: $saveLiveAsLivePhoto)
+                NavigationLink("登录态 Cookie") {
+                    AdvancedSettingsView()
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.canvas)
+        .navigationTitle("下载")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - 统计
+
+struct StatisticsView: View {
+    @Query(sort: \Item.savedAt, order: .reverse) private var items: [Item]
+
+    private var characterCount: Int {
+        items.reduce(0) { $0 + $1.text.count }
+    }
+
+    private var imageCount: Int {
+        items.reduce(0) { partial, item in
+            partial + item.media.filter { $0.kind != .video }.count
+        }
+    }
+
+    private var tagCount: Int {
+        Set(items.flatMap(\.tags)).count
+    }
+
+    private var topicCount: Int {
+        Set(items.flatMap(\.topics)).count
+    }
+
+    private var platformCounts: [PlatformCount] {
+        var counts: [Platform: Int] = [:]
+        for item in items { counts[item.platform, default: 0] += 1 }
+        return counts.sorted { $0.value > $1.value }.map {
+            PlatformCount(platform: $0.key, count: $0.value)
+        }
+    }
+
+    private struct PlatformCount: Identifiable {
+        let platform: Platform
+        let count: Int
+        var id: String { platform.rawValue }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(items.count)")
+                    .font(.system(size: 40, weight: .bold))
+                    .tracking(-1)
+                Text("收藏总数")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.inkTertiary)
+
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                    statCard("\(characterCount)", "文字")
+                    statCard("\(imageCount)", "图片")
+                    statCard("\(tagCount)", "标签")
+                    statCard("\(topicCount)", "话题")
+                }
+                .padding(.top, 18)
+
+                if !platformCounts.isEmpty {
+                    Text("平台分布")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.inkTertiary)
+                        .padding(.top, 24)
+                        .padding(.bottom, 8)
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(platformCounts) { entry in
+                            HStack(spacing: 8) {
+                                Circle().fill(entry.platform.tint).frame(width: 7, height: 7)
+                                Text(entry.platform.displayName).font(.system(size: 13))
+                                Spacer()
+                                Text("\(entry.count)").font(.system(size: 13)).foregroundStyle(Theme.inkSecondary)
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 16).fill(Theme.surface))
+                }
+            }
+            .padding(16)
+            .padding(.bottom, 40)
+        }
+        .background(Theme.canvas)
+        .navigationTitle("统计")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func statCard(_ value: String, _ title: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.system(size: 28, weight: .bold))
+                .tracking(-0.5)
+            Text(title)
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.inkTertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.surface))
+    }
+}
+
+// MARK: - 关于
 
 struct AboutView: View {
     var body: some View {
@@ -138,7 +292,7 @@ struct AboutView: View {
                             .font(.system(size: 44, weight: .semibold, design: .serif))
                             .foregroundStyle(.white)
                     )
-                    .padding(.top, 30)
+                    .padding(.top, 24)
 
                 Text("拾贝")
                     .font(.system(size: 24, weight: .semibold, design: .serif))
@@ -158,12 +312,17 @@ struct AboutView: View {
                     bullet("隐私", "不登录、不上传，所有数据只存在本机")
                 }
                 .padding(18)
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Theme.surface)
-                )
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.surface))
                 .padding(.horizontal, 20)
-                .padding(.top, 10)
+
+                VStack(spacing: 6) {
+                    Text("版本 1.0.0 (1)")
+                    NavigationLink("快捷指令设置") { ShortcutsHelpView() }
+                        .foregroundStyle(Color(rgb: 0x0A7CFF))
+                }
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.inkTertiary)
+                .padding(.top, 6)
             }
             .padding(.bottom, 40)
         }
@@ -190,36 +349,29 @@ struct ShortcutsHelpView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("在任意 App 里分享链接时，直接调用拾贝解析，省去复制粘贴。")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Theme.inkSecondary)
-                        .lineSpacing(3)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("在任意 App 里分享链接时，直接调用拾贝解析，省去复制粘贴。")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .lineSpacing(3)
 
-                    step(1, "打开「快捷指令」App，新建快捷指令")
-                    step(2, "添加操作 → 搜索「拾贝」→ 选择「收藏链接到拾贝」")
-                    step(3, "在操作参数里选择「快捷指令输入」，并勾选「接收 URL、文本」")
-                    step(4, "分享面板中把该快捷指令添加到收藏，之后从任何 App 分享即可一键收藏")
-                    step(5, "也可以直接使用链接：shibei://parse?url=<链接地址>")
+                step(1, "打开「快捷指令」App，新建快捷指令")
+                step(2, "添加操作 → 搜索「拾贝」→ 选择「收藏链接到拾贝」")
+                step(3, "在操作参数里选择「快捷指令输入」，并勾选「接收 URL、文本」")
+                step(4, "分享面板中把该快捷指令添加到收藏，之后从任何 App 分享即可一键收藏")
+                step(5, "也可以直接使用链接：shibei://parse?url=<链接地址>")
 
-                    Text("提示：快捷指令在后台执行，不会打开 App，只负责「收藏」；需要离线缓存时再进 App 点一下缓存。")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.inkTertiary)
-                        .padding(.top, 4)
-                }
-                .padding(20)
+                Text("提示：快捷指令在后台执行，不会打开 App，只负责收藏；需要离线缓存时再进 App 点一下缓存。")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.inkTertiary)
+                    .padding(.top, 4)
             }
-            .background(Theme.canvas)
-            .navigationTitle("快捷指令")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
-                }
-            }
+            .padding(20)
         }
+        .background(Theme.canvas)
+        .navigationTitle("快捷指令")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func step(_ number: Int, _ text: String) -> some View {

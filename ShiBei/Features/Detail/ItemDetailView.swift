@@ -11,6 +11,8 @@ struct ItemDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var showTagEditor = false
+    @State private var showTopicEditor = false
+    @State private var didRecordView = false
     @State private var showParseLog = false
 
     var body: some View {
@@ -92,12 +94,40 @@ struct ItemDetailView: View {
         .sheet(isPresented: $showTagEditor) {
             TagEditorSheet(item: item)
         }
+        .sheet(isPresented: $showTopicEditor) {
+            TopicEditorSheet(item: item)
+        }
         .sheet(isPresented: $showParseLog) {
             ParseLogView(
                 title: item.displayTitle,
                 log: item.parseNotes ?? ""
             )
         }
+        .onAppear {
+            appState.hideTabBar = true
+            guard !didRecordView else { return }
+            didRecordView = true
+            LibraryService.recordView(item)
+        }
+        .onDisappear {
+            appState.hideTabBar = false
+        }
+    }
+
+    private func addChip(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 3) {
+                Image(systemName: "plus")
+                    .font(.system(size: 10, weight: .bold))
+                Text(title)
+                    .font(.system(size: 12))
+            }
+            .foregroundStyle(Theme.inkSecondary)
+            .padding(.horizontal, 10)
+            .frame(height: 27)
+            .background(Capsule().fill(Theme.fill.opacity(0.7)))
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Content
@@ -151,24 +181,16 @@ struct ItemDetailView: View {
             }
 
             HStack(alignment: .top, spacing: 8) {
-                FlowTags(tags: item.tags)
-                Button {
-                    showTagEditor = true
-                } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 10, weight: .bold))
-                        Text("标签")
-                            .font(.system(size: 12))
-                    }
-                    .foregroundStyle(Theme.inkSecondary)
-                    .padding(.horizontal, 10)
-                    .frame(height: 27)
-                    .background(Capsule().fill(Theme.fill.opacity(0.7)))
-                }
-                .buttonStyle(.plain)
+                FlowTags(tags: item.topics, prefix: "# ", tint: Color(rgb: 0x0A7CFF))
+                addChip("话题") { showTopicEditor = true }
             }
             .padding(.top, 16)
+
+            HStack(alignment: .top, spacing: 8) {
+                FlowTags(tags: item.tags)
+                addChip("标签") { showTagEditor = true }
+            }
+            .padding(.top, 8)
 
             HStack(spacing: 14) {
                 Text("字 · \(item.text.count)")
@@ -383,17 +405,107 @@ struct TagEditorSheet: View {
     }
 }
 
+// MARK: - 话题编辑
+
+@MainActor
+struct TopicEditorSheet: View {
+    @Bindable var item: Item
+    @Environment(\.dismiss) private var dismiss
+    @Query(sort: \Item.savedAt, order: .reverse) private var items: [Item]
+    @State private var draft = ""
+
+    private var suggestions: [String] {
+        var set = Set(items.flatMap(\.topics))
+        item.topics.forEach { set.insert($0) }
+        return set.sorted()
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack {
+                        TextField("输入话题名（不带 #）", text: $draft)
+                            .submitLabel(.done)
+                            .onSubmit(addTopic)
+                        Button("添加") { addTopic() }
+                            .disabled(trimmedDraft.isEmpty)
+                    }
+                } header: {
+                    Text("新建")
+                } footer: {
+                    Text("话题会同时用于首页筛选。")
+                }
+
+                Section("已有话题") {
+                    if suggestions.isEmpty {
+                        Text("还没有话题").foregroundStyle(Theme.inkTertiary)
+                    }
+                    ForEach(suggestions, id: \.self) { topic in
+                        HStack {
+                            Text("# \(topic)")
+                            Spacer()
+                            Button {
+                                toggle(topic)
+                            } label: {
+                                Image(systemName: item.topics.contains(topic) ? "checkmark.circle.fill" : "plus.circle")
+                                    .foregroundStyle(item.topics.contains(topic) ? Theme.success : Theme.inkSecondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("编辑话题")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private var trimmedDraft: String {
+        draft.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func addTopic() {
+        let topic = trimmedDraft.replacingOccurrences(of: "#", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !topic.isEmpty, !item.topics.contains(topic) else {
+            draft = ""
+            return
+        }
+        item.topics.append(topic)
+        LibraryService.updateTopics(item, topics: item.topics)
+        draft = ""
+    }
+
+    private func toggle(_ topic: String) {
+        if item.topics.contains(topic) {
+            item.topics.removeAll { $0 == topic }
+        } else {
+            item.topics.append(topic)
+        }
+        LibraryService.updateTopics(item, topics: item.topics)
+    }
+}
+
 // MARK: - 标签流
 
 struct FlowTags: View {
     let tags: [String]
+    var prefix: String = "#"
+    var tint: Color = Theme.inkSecondary
 
     var body: some View {
         FlowLayout(spacing: 7) {
             ForEach(tags, id: \.self) { tag in
-                Text("#\(tag)")
+                Text("\(prefix)\(tag)")
                     .font(.system(size: 12))
-                    .foregroundStyle(Theme.inkSecondary)
+                    .foregroundStyle(tint)
                     .padding(.horizontal, 11)
                     .frame(height: 27)
                     .background(Capsule().fill(Theme.fill.opacity(0.7)))

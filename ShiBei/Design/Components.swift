@@ -17,6 +17,28 @@ struct PlatformBadge: View {
     }
 }
 
+// MARK: - 平台图标（App 图标样式）
+
+struct PlatformIcon: View {
+    let platform: Platform
+    var size: CGFloat = 16
+
+    var body: some View {
+        Text(platform.shortMark)
+            .font(.system(size: size * 0.56, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(
+                RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+                    .fill(platform.tint)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+                    .stroke(.white, lineWidth: 1.3)
+            )
+    }
+}
+
 // MARK: - 筛选胶囊
 
 struct FilterChip: View {

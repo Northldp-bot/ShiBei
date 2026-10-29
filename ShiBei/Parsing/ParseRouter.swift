@@ -30,7 +30,11 @@ final class ParseRouter: Sendable {
 
         if let resolver = resolvers.first(where: { $0.canResolve(url) }) {
             do {
-                return try await resolver.resolve(url, http: http)
+                var content = try await resolver.resolve(url, http: http)
+                if content.topics.isEmpty {
+                    content.topics = ParseSupport.topics(in: content.text)
+                }
+                return content
             } catch {
                 // 小红书的安全拦截页只有真实浏览器执行 JS 后才能拿到笔记数据
                 if platform == .xiaohongshu,
@@ -41,6 +45,9 @@ final class ParseRouter: Sendable {
                 // 平台解析失败时，用通用解析器再试一次，保留原始错误信息
                 if let fallback = try? await GenericResolver().resolve(url, http: http) {
                     var result = fallback
+                    if result.topics.isEmpty {
+                        result.topics = ParseSupport.topics(in: result.text)
+                    }
                     result.diagnostics.append("平台解析失败：\(error.localizedDescription)")
                     result.diagnostics.append("已降级为 OpenGraph 解析")
                     return result
@@ -48,7 +55,11 @@ final class ParseRouter: Sendable {
                 throw error
             }
         }
-        return try await GenericResolver().resolve(url, http: http)
+        var content = try await GenericResolver().resolve(url, http: http)
+        if content.topics.isEmpty {
+            content.topics = ParseSupport.topics(in: content.text)
+        }
+        return content
     }
 
     /// 用离屏 WKWebView 打开笔记页，读取 JS 执行后的 window.__INITIAL_STATE__

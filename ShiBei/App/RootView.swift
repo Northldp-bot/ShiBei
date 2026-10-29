@@ -8,9 +8,21 @@ final class AppState {
     var pendingLink: String?
     var searchText = ""
     var galleryMode = false
-    var selectedPlatform: Platform?
-    var selectedTag: String?
+    var filter = FilterState()
+    var sortOrder: SortOrder = .saved
     var toast: ToastMessage?
+    var hideTabBar = false
+
+    init() {
+        if let raw = UserDefaults.standard.string(forKey: "defaultSort"),
+           let order = SortOrder(rawValue: raw) {
+            sortOrder = order
+        }
+        if let raw = UserDefaults.standard.string(forKey: "defaultDimension"),
+           let dimension = FilterDimension(rawValue: raw) {
+            filter.dimension = dimension
+        }
+    }
 }
 
 struct ToastMessage: Identifiable, Equatable {
@@ -18,11 +30,11 @@ struct ToastMessage: Identifiable, Equatable {
     var text: String
     var style: Style = .success
 
-    enum Style { case success, failure, info }
+    enum Style: Equatable { case success, failure, info }
 }
 
 enum AppTab: Hashable {
-    case library, cache, settings
+    case library, settings
 }
 
 struct RootView: View {
@@ -31,19 +43,24 @@ struct RootView: View {
     var body: some View {
         @Bindable var state = appState
 
-        TabView(selection: $state.selectedTab) {
-            LibraryView()
-                .tabItem { Label("收藏", systemImage: "square.grid.2x2") }
-                .tag(AppTab.library)
+        ZStack(alignment: .bottom) {
+            Group {
+                switch state.selectedTab {
+                case .library:
+                    LibraryView()
+                case .settings:
+                    SettingsView()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            CacheView()
-                .tabItem { Label("缓存", systemImage: "arrow.down.circle") }
-                .tag(AppTab.cache)
-
-            SettingsView()
-                .tabItem { Label("设置", systemImage: "gearshape") }
-                .tag(AppTab.settings)
+            if !state.hideTabBar {
+                BottomBar(selection: $state.selectedTab) {
+                    state.presentCapture = true
+                }
+            }
         }
+        .background(Theme.canvas)
         .sheet(isPresented: $state.presentCapture) {
             CaptureView(prefill: state.pendingLink)
                 .presentationDetents([.large])
@@ -71,6 +88,61 @@ struct RootView: View {
     }
 }
 
+/// 底部导航：收藏 / ＋ / 设置
+private struct BottomBar: View {
+    @Binding var selection: AppTab
+    var onAdd: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            tabButton(.library, title: "收藏", icon: "square.grid.2x2")
+            addButton
+            tabButton(.settings, title: "设置", icon: "gearshape")
+        }
+        .padding(6)
+        .background(
+            Capsule(style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(Capsule(style: .continuous).stroke(.white.opacity(0.6), lineWidth: 0.5))
+                .shadow(color: .black.opacity(0.12), radius: 18, y: 6)
+        )
+        .padding(.horizontal, 44)
+        .padding(.bottom, 6)
+    }
+
+    private var addButton: some View {
+        Button(action: onAdd) {
+            Image(systemName: "plus")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 52, height: 52)
+                .background(Circle().fill(Theme.ink))
+                .overlay(Circle().stroke(Theme.canvas, lineWidth: 4))
+                .shadow(color: .black.opacity(0.22), radius: 10, y: 4)
+        }
+        .buttonStyle(.plain)
+        .offset(y: -14)
+    }
+
+    private func tabButton(_ tab: AppTab, title: String, icon: String) -> some View {
+        Button {
+            selection = tab
+        } label: {
+            VStack(spacing: 2) {
+                Image(systemName: icon).font(.system(size: 19, weight: .medium))
+                Text(title).font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundStyle(selection == tab ? Color.white : Theme.inkSecondary)
+            .frame(width: 96, height: 46)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(selection == tab ? Theme.ink : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 private struct ToastView: View {
     let toast: ToastMessage
 
@@ -85,10 +157,7 @@ private struct ToastView: View {
         .foregroundStyle(.white)
         .padding(.horizontal, 16)
         .padding(.vertical, 11)
-        .background(
-            Capsule(style: .continuous)
-                .fill(Color.black.opacity(0.86))
-        )
+        .background(Capsule(style: .continuous).fill(Color.black.opacity(0.86)))
         .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
         .padding(.horizontal, 24)
     }

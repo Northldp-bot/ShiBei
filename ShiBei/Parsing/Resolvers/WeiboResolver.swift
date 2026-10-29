@@ -31,7 +31,12 @@ struct WeiboResolver: ContentResolver {
         if let cookie = PlatformCookie.header(for: .weibo) {
             headers["Cookie"] = cookie
         }
-        let json = try await http.json(api, headers: headers, referer: "https://m.weibo.cn/")
+        let json: Any
+        do {
+            json = try await http.json(api, headers: headers, referer: "https://m.weibo.cn/")
+        } catch {
+            throw ParseError.blocked("微博接口暂时不可用（可能触发风控），请稍后重试或在设置中填入 Cookie")
+        }
         let root = json as? [String: Any]
         guard let root, let data = root.dict("data") else {
             let message = root?["msg"] as? String ?? "unknown"
@@ -67,18 +72,26 @@ struct WeiboResolver: ContentResolver {
             }
         }
 
-        // 视频
-        if let pageInfo = data.dict("page_info"), let mediaInfo = pageInfo.dict("media_info") {
-            let keys = ["mp4_720p_mp4", "mp4_hd_url", "mp4_sd_url"]
-            for key in keys {
-                if let raw = mediaInfo.string(key), let videoURL = ParseSupport.httpsURL(raw) {
-                    let poster = ParseSupport.httpsURL(
-                        mediaInfo.string("big_pic_info") ?? pageInfo.string("page_pic")
-                    )
-                    media.append(ParsedMedia(kind: .video, videoURL: videoURL, posterURL: poster,
-                                             duration: mediaInfo.double("duration")))
-                    break
-                }
+        // 视频：mp4 直链通常放在 page_info.urls，media_info 只有部分视频带 mp4 字段
+        if let pageInfo = data.dict("page_info") {
+            let urls = pageInfo.dict("urls") ?? [:]
+            let mediaInfo = pageInfo.dict("media_info") ?? [:]
+            let candidates: [Any?] = [
+                urls["mp4_720p_mp4"], urls["mp4_1080p_mp4"], urls["mp4_hd_mp4"], urls["mp4_ld_mp4"],
+                mediaInfo["mp4_720p_mp4"], mediaInfo["mp4_hd_url"], mediaInfo["mp4_sd_url"],
+                mediaInfo["stream_url_hd"], mediaInfo["stream_url"]
+            ]
+            for candidate in candidates {
+                guard let raw = candidate as? String,
+                      let videoURL = ParseSupport.httpsURL(raw) else { continue }
+                let poster = ParseSupport.httpsURL(pageInfo.string("page_pic"))
+                media.append(ParsedMedia(
+                    kind: .video,
+                    videoURL: videoURL,
+                    posterURL: poster,
+                    duration: mediaInfo.double("duration")
+                ))
+                break
             }
         }
 

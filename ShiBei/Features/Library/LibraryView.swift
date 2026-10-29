@@ -6,29 +6,22 @@ struct LibraryView: View {
     @Query(sort: \Item.savedAt, order: .reverse) private var items: [Item]
 
     @State private var showSearch = false
+    @State private var showFilter = false
 
     private var filtered: [Item] {
-        items.filter { item in
-            if let platform = appState.selectedPlatform, item.platform != platform { return false }
-            if let tag = appState.selectedTag, !item.tags.contains(tag) { return false }
-            if !appState.searchText.isEmpty {
-                let query = appState.searchText.lowercased()
-                let haystack = (item.title + "\n" + item.text + "\n" + item.authorName).lowercased()
-                if !haystack.contains(query) { return false }
-            }
-            return true
-        }
-    }
-
-    private var allTags: [String] {
-        Array(Set(items.flatMap(\.tags))).sorted()
+        ItemSorter.sorted(
+            items.filter { appState.filter.matches($0) },
+            by: appState.sortOrder
+        )
     }
 
     var body: some View {
+        @Bindable var state = appState
+
         NavigationStack {
             VStack(spacing: 0) {
                 header
-                chipBar
+                filterRow
                 content
             }
             .background(Theme.canvas)
@@ -42,102 +35,109 @@ struct LibraryView: View {
         .sheet(isPresented: $showSearch) {
             SearchView(items: items)
         }
+        .sheet(isPresented: $showFilter) {
+            FilterSheet(filter: $state.filter)
+        }
     }
 
     // MARK: - Header
 
     private var header: some View {
-        ZStack {
-            VStack(spacing: 3) {
-                Text("拾贝")
-                    .font(Theme.wordmark())
-                    .tracking(4)
-                Text("SHIBEI")
-                    .font(.system(size: 8, weight: .semibold))
-                    .tracking(3.2)
-                    .foregroundStyle(Theme.inkTertiary)
-            }
-
-            HStack {
-                CircleIconButton(systemName: "gearshape") {
-                    appState.selectedTab = .settings
-                }
-                Spacer()
-                HStack(spacing: 8) {
-                    CircleIconButton(systemName: appState.galleryMode ? "list.bullet" : "square.grid.2x2") {
-                        withAnimation(.snappy(duration: 0.25)) {
-                            appState.galleryMode.toggle()
-                        }
-                    }
-                    CircleIconButton(systemName: "magnifyingglass") { showSearch = true }
-                    CircleIconButton(systemName: "plus", emphasized: true) {
-                        appState.presentCapture = true
-                    }
-                }
-            }
+        VStack(spacing: 0) {
+            Text("拾贝")
+                .font(Theme.wordmark())
+                .tracking(4)
         }
-        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity)
         .frame(height: 44)
     }
 
-    // MARK: - Chips
+    // MARK: - Filter row
 
-    private var chipBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                FilterChip(
-                    title: "全部",
-                    platform: nil,
-                    isSelected: appState.selectedPlatform == nil
-                ) {
-                    appState.selectedPlatform = nil
-                }
+    private var filterRow: some View {
+        HStack(spacing: 8) {
+            dimensionMenu
 
-                ForEach(Platform.allCases.filter { $0 != .web }) { platform in
-                    FilterChip(
-                        title: platform.displayName,
-                        platform: platform,
-                        isSelected: appState.selectedPlatform == platform
-                    ) {
-                        appState.selectedPlatform = appState.selectedPlatform == platform ? nil : platform
-                    }
-                }
-
-                if appState.selectedTag != nil {
-                    FilterChip(title: "#\(appState.selectedTag ?? "")", platform: nil, isSelected: true) {
-                        appState.selectedTag = nil
-                    }
-                }
-
-                Menu {
-                    Button("清除筛选") {
-                        appState.selectedTag = nil
-                        appState.selectedPlatform = nil
-                    }
-                    if allTags.isEmpty {
-                        Text("还没有标签")
-                    } else {
-                        Divider()
-                        ForEach(allTags, id: \.self) { tag in
-                            Button {
-                                appState.selectedTag = tag
-                            } label: {
-                                Text(tag)
-                            }
+            Button {
+                showFilter = true
+            } label: {
+                toolIcon("line.3.horizontal.decrease")
+                    .overlay(alignment: .topTrailing) {
+                        if appState.filter.activeCount > 0 {
+                            Text("\(appState.filter.activeCount)")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(minWidth: 15, minHeight: 15)
+                                .background(Circle().fill(Theme.ink))
+                                .overlay(Circle().stroke(Theme.canvas, lineWidth: 1.5))
+                                .offset(x: 4, y: -4)
                         }
                     }
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            Button {
+                withAnimation(.snappy(duration: 0.2)) {
+                    appState.galleryMode.toggle()
+                }
+            } label: {
+                toolIcon(appState.galleryMode ? "list.bullet" : "square.grid.2x2")
+            }
+            .buttonStyle(.plain)
+
+            sortMenu
+
+            Button {
+                showSearch = true
+            } label: {
+                toolIcon("magnifyingglass")
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 10)
+    }
+
+    private var dimensionMenu: some View {
+        Menu {
+            ForEach(FilterDimension.allCases) { dimension in
+                Button {
+                    appState.filter.dimension = dimension
                 } label: {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Theme.ink)
-                        .frame(width: 33, height: 33)
-                        .background(Circle().fill(Theme.fill.opacity(0.75)))
+                    Label(dimension.title, systemImage: dimension.symbol)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
+        } label: {
+            toolIcon(appState.filter.dimension.symbol)
         }
-        .padding(.bottom, 6)
+    }
+
+    private var sortMenu: some View {
+        Menu {
+            ForEach(SortOrder.allCases) { order in
+                Button {
+                    appState.sortOrder = order
+                } label: {
+                    if appState.sortOrder == order {
+                        Label(order.title, systemImage: "checkmark")
+                    } else {
+                        Text(order.title)
+                    }
+                }
+            }
+        } label: {
+            toolIcon("arrow.up.arrow.down")
+        }
+    }
+
+    private func toolIcon(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(Theme.ink)
+            .frame(width: 33, height: 33)
+            .background(Circle().fill(Theme.fill.opacity(0.75)))
     }
 
     // MARK: - Content
@@ -148,9 +148,18 @@ struct LibraryView: View {
             ScrollView {
                 EmptyStateView(
                     title: "还没有收藏",
-                    message: "复制小红书、抖音、B 站、知乎、微博或小黑盒的分享链接，点右上角 + 粘贴进来。",
+                    message: "复制小红书、抖音、B 站、知乎、微博或小黑盒的分享链接，点底部中间的 + 粘贴进来。",
                     actionTitle: "添加第一条",
                     action: { appState.presentCapture = true }
+                )
+            }
+        } else if filtered.isEmpty {
+            ScrollView {
+                EmptyStateView(
+                    title: "没有符合条件的内容",
+                    message: "当前筛选条件下没有收藏。可以换个维度，或清除筛选。",
+                    actionTitle: "清除筛选",
+                    action: { appState.filter.clear() }
                 )
             }
         } else {
@@ -167,7 +176,7 @@ struct LibraryView: View {
                         }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 110)
+                    .padding(.bottom, 120)
                 }
             }
             .scrollDismissesKeyboard(.immediately)
@@ -187,7 +196,7 @@ struct LibraryView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.bottom, 110)
+        .padding(.bottom, 120)
     }
 }
 
@@ -202,11 +211,11 @@ struct GalleryCell: View {
                 local: item.sortedMedia.first?.localImageURL,
                 remote: item.coverURL
             )
-            .aspectRatio(3 / 4, contentMode: .fill)
+            .aspectRatio(3.0 / 4.0, contentMode: .fill)
             .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(alignment: .topLeading) {
-                PlatformBadge(platform: item.platform, size: 18)
+                PlatformIcon(platform: item.platform, size: 18)
                     .padding(7)
             }
             .overlay(alignment: .bottomTrailing) {

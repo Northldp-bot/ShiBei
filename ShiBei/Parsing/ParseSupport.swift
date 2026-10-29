@@ -102,6 +102,25 @@ enum ParseSupport {
         }
     }
 
+    /// 从正文提取 `#话题#`，去重并限制数量
+    static func topics(in text: String) -> [String] {
+        guard let regex = try? NSRegularExpression(pattern: "#([^#\\s\\[\\]]{1,30})") else { return [] }
+        let range = NSRange(text.startIndex..., in: text)
+        var result: [String] = []
+        var seen = Set<String>()
+        for match in regex.matches(in: text, range: range) {
+            guard match.numberOfRanges > 1,
+                  let r = Range(match.range(at: 1), in: text) else { continue }
+            let topic = String(text[r])
+                .trimmingCharacters(in: CharacterSet(charactersIn: "，。！？、,.!?#"))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !topic.isEmpty, seen.insert(topic).inserted else { continue }
+            result.append(topic)
+            if result.count >= 12 { break }
+        }
+        return result
+    }
+
     /// 从 `url_list` 这类数组中取最后（通常最大）一个
     static func lastURL(in value: Any?) -> URL? {
         guard let list = value as? [String], let last = list.last else {

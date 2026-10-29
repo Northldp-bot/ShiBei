@@ -18,6 +18,11 @@ final class Item {
     var folderName: String?
     var coverRemote: String?
     var tags: [String]
+    /// 话题，来自正文 `#…#`，可手动增改
+    var topics: [String]
+    var lastEditedAt: Date?
+    var lastViewedAt: Date?
+    var viewCount: Int
     var parseNotes: String?
 
     @Relationship(deleteRule: .cascade, inverse: \MediaAsset.item)
@@ -38,6 +43,10 @@ final class Item {
         folderName: String? = nil,
         coverRemote: String? = nil,
         tags: [String] = [],
+        topics: [String] = [],
+        lastEditedAt: Date? = nil,
+        lastViewedAt: Date? = nil,
+        viewCount: Int = 0,
         parseNotes: String? = nil,
         media: [MediaAsset] = []
     ) {
@@ -55,6 +64,10 @@ final class Item {
         self.folderName = folderName
         self.coverRemote = coverRemote
         self.tags = tags
+        self.topics = topics
+        self.lastEditedAt = lastEditedAt
+        self.lastViewedAt = lastViewedAt
+        self.viewCount = viewCount
         self.parseNotes = parseNotes
         self.media = media
     }

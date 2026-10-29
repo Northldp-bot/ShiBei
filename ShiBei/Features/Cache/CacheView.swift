@@ -27,7 +27,7 @@ struct CacheView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        Group {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(FileSize.string(totals.bytes))
@@ -55,7 +55,9 @@ struct CacheView: View {
                     } else {
                         VStack(spacing: 0) {
                             ForEach(cachedItems) { item in
-                                NavigationLink(value: item.id) {
+                                NavigationLink {
+                                    ItemDetailView(item: item)
+                                } label: {
                                     cacheRow(item)
                                 }
                                 .buttonStyle(.plain)
@@ -92,11 +94,6 @@ struct CacheView: View {
             .background(Theme.canvas)
             .navigationTitle("缓存")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: UUID.self) { id in
-                if let item = items.first(where: { $0.id == id }) {
-                    ItemDetailView(item: item)
-                }
-            }
             .confirmationDialog("确定清理全部缓存？", isPresented: $showClearConfirm, titleVisibility: .visible) {
                 Button("清理全部", role: .destructive) {
                     for item in cachedItems {
