@@ -59,7 +59,7 @@ struct FilterChip: View {
                     .font(.system(size: 13.5, weight: .medium))
                     .lineLimit(1)
             }
-            .foregroundStyle(isSelected ? Theme.onAccent : Theme.ink)
+            .foregroundStyle(isSelected ? Theme.onInk : Theme.ink)
             .padding(.horizontal, 13)
             .frame(height: 33)
             .background(
@@ -84,7 +84,7 @@ struct CircleIconButton: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(emphasized ? Theme.onAccent : Theme.ink)
+                .foregroundStyle(emphasized ? Theme.onInk : Theme.ink)
                 .frame(width: size, height: size)
                 .background(
                     Circle().fill(emphasized ? Theme.ink : Theme.fill.opacity(0.75))
@@ -220,7 +220,7 @@ struct PrimaryButton: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 50)
-            .foregroundStyle(Theme.onAccent)
+            .foregroundStyle(Theme.onInk)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(enabled ? Theme.ink : Theme.ink.opacity(0.35))

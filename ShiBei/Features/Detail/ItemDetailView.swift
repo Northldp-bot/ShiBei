@@ -267,7 +267,7 @@ struct ItemDetailView: View {
                     }
                 }
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.onInk)
                 .padding(.horizontal, 20)
                 .frame(height: 44)
                 .background(Capsule().fill(Theme.ink))

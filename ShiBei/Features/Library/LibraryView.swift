@@ -66,7 +66,7 @@ struct LibraryView: View {
                         if appState.filter.activeCount > 0 {
                             Text("\(appState.filter.activeCount)")
                                 .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Theme.onInk)
                                 .frame(minWidth: 15, minHeight: 15)
                                 .background(Circle().fill(Theme.ink))
                                 .overlay(Circle().stroke(Theme.canvas, lineWidth: 1.5))

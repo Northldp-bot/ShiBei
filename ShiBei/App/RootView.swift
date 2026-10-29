@@ -114,7 +114,7 @@ private struct BottomBar: View {
         Button(action: onAdd) {
             Image(systemName: "plus")
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.onInk)
                 .frame(width: 52, height: 52)
                 .background(Circle().fill(Theme.ink))
                 .overlay(Circle().stroke(Theme.canvas, lineWidth: 4))
@@ -132,7 +132,7 @@ private struct BottomBar: View {
                 Image(systemName: icon).font(.system(size: 19, weight: .medium))
                 Text(title).font(.system(size: 10, weight: .semibold))
             }
-            .foregroundStyle(selection == tab ? Color.white : Theme.inkSecondary)
+            .foregroundStyle(selection == tab ? Theme.onInk : Theme.inkSecondary)
             .frame(width: 96, height: 46)
             .background(
                 Capsule(style: .continuous)

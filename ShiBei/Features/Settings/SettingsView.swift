@@ -2,9 +2,24 @@ import SwiftUI
 import SwiftData
 
 struct SettingsView: View {
+    @AppStorage("themeMode") private var themeMode = "system"
+
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Picker("外观", selection: $themeMode) {
+                        Text("跟随系统").tag("system")
+                        Text("浅色").tag("light")
+                        Text("深色").tag("dark")
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("外观")
+                } footer: {
+                    Text("跟随系统时会随 iOS 的深色模式自动切换；也可以在这里固定浅色或深色。")
+                }
+
                 Section("内容") {
                     NavigationLink {
                         GeneralSettingsView()
@@ -290,7 +305,7 @@ struct AboutView: View {
                     .overlay(
                         Text("拾")
                             .font(.system(size: 44, weight: .semibold, design: .serif))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.onInk)
                     )
                     .padding(.top, 24)
 
@@ -378,7 +393,7 @@ struct ShortcutsHelpView: View {
         HStack(alignment: .top, spacing: 12) {
             Text("\(number)")
                 .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.onInk)
                 .frame(width: 22, height: 22)
                 .background(Circle().fill(Theme.ink))
             Text(text)

@@ -13,6 +13,8 @@ enum Theme {
     static let hairline = dynamic(light: 0xEDEDF0, dark: 0x2C2C2E)
     static let fill = dynamic(light: 0xE8E8ED, dark: 0x2C2C2E)
     static let onAccent = Color.white
+    /// 墨色底上的前景色：浅色模式白字，深色模式黑字
+    static let onInk = dynamic(light: 0xFFFFFF, dark: 0x0B0B0C)
     static let success = dynamic(light: 0x2BA24C, dark: 0x34C759)
     static let warning = dynamic(light: 0xC77700, dark: 0xFF9F0A)
     static let danger = dynamic(light: 0xE6162D, dark: 0xFF453A)
